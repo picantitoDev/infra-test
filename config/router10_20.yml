@@ -142,10 +142,7 @@
         marker: "# {mark} ANSIBLE MANAGED VLAN30 ROUTE"
         create: yes
         mode: '0644'
-
-    # ===============================================
-    # 7️⃣ Configure persistent DNS
-    # ===============================================
+        
     - name: Configure DNS servers in resolv.conf
       ansible.builtin.copy:
         dest: /etc/resolv.conf
@@ -157,12 +154,9 @@
         owner: root
         group: root
 
-    # ===============================================
-    # ✅ Wrap-up
-    # ===============================================
     - name: Display completion message
       ansible.builtin.debug:
-        msg: "✅ Router 10_20 configuration complete on {{ inventory_hostname }}"
+        msg: "Router 10_20 configuration complete on {{ inventory_hostname }}"
 
   handlers:
     - name: reload nftables
