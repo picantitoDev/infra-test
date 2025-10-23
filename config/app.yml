@@ -1,0 +1,192 @@
+---
+- name: 🚀 Desplegar App y Worker con Docker + NFS
+  hosts: app
+  become: yes
+
+  vars:
+    docker_user: "picantito"
+    docker_pat: ${DOCKER_TOKEN}
+    app_image: "picantito/infraestructure-as-code:app-1.0.0"
+
+    app_container_name: "myapp"
+    worker_container_name: "myapp-worker"
+
+    # URLs de servicios externos
+    database_url: "postgresql://piero:piero@10.30.0.1:5432/sgi"
+    redis_url: "redis://:infra@10.30.0.2:6379"
+    rabbitmq_url: "amqp://sgi_user:sgi_pass@10.20.0.2:5672"
+
+    node_env: "production"
+    session_secret: "infra"
+
+    # NFS
+    nfs_client_ip: "10.10.0.3"
+
+  tasks:
+    # ----------------------------
+    # 🧱 INSTALACIÓN DE DOCKER
+    # ----------------------------
+    - name: 🌀 Actualizar caché de APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: 📦 Instalar dependencias requeridas
+      apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: 📂 Crear directorio para la clave GPG de Docker
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: 🔑 Descargar clave GPG de Docker
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: 🖥️ Obtener arquitectura del sistema
+      command: dpkg --print-architecture
+      register: system_arch
+      changed_when: false
+
+    - name: 🧩 Obtener codename de Debian
+      shell: . /etc/os-release && echo "$VERSION_CODENAME"
+      register: debian_codename
+      changed_when: false
+
+    - name: ➕ Agregar repositorio oficial de Docker
+      apt_repository:
+        repo: "deb [arch={{ system_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ debian_codename.stdout }} stable"
+        filename: docker
+        state: present
+
+    - name: 🔄 Actualizar caché de APT tras agregar repositorio Docker
+      apt:
+        update_cache: yes
+
+    - name: 🐳 Instalar Docker Engine y complementos
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: ▶️ Asegurar que Docker esté iniciado y habilitado
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # ----------------------------
+    # 🔐 LOGIN Y PULL DE IMAGEN
+    # ----------------------------
+    - name: 🔐 Autenticarse en Docker Hub
+      shell: |
+        echo "{{ docker_pat }}" | docker login -u {{ docker_user }} --password-stdin
+      args:
+        executable: /bin/bash
+
+    - name: 📥 Descargar imagen de la app
+      community.docker.docker_image:
+        name: "{{ app_image }}"
+        source: pull
+
+    # ----------------------------
+    # 📁 NFS SERVER (LOG PRODUCERS)
+    # ----------------------------
+    - name: 📦 Instalar NFS server
+      apt:
+        name: nfs-kernel-server
+        state: present
+
+    - name: 🧷 Asegurar permisos correctos en /var/lib/docker
+      file:
+        path: /var/lib/docker
+        mode: "0755"
+        recurse: no
+
+    - name: 👀 Permitir lectura a contenedores
+      file:
+        path: /var/lib/docker/containers
+        mode: "o+rx"
+        recurse: yes
+
+    - name: 📤 Configurar exportación NFS
+      lineinfile:
+        path: /etc/exports
+        line: "/var/lib/docker/containers {{ nfs_client_ip }}(rw,sync,no_subtree_check,no_root_squash)"
+        create: yes
+
+    - name: 📡 Exportar recursos NFS
+      command: exportfs -rav
+
+    - name: 🔁 Reiniciar servicio NFS
+      systemd:
+        name: nfs-kernel-server
+        state: restarted
+        enabled: yes
+
+    # ----------------------------
+    # 🚀 APP + WORKER
+    # ----------------------------
+    - name: 🧹 Eliminar contenedores previos si existen
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: absent
+        force_kill: true
+        purge_networks: true
+      loop:
+        - "{{ app_container_name }}"
+        - "{{ worker_container_name }}"
+      ignore_errors: true
+
+    - name: 🚀 Levantar contenedor de la APP
+      community.docker.docker_container:
+        name: "{{ app_container_name }}"
+        image: "{{ app_image }}"
+        restart_policy: unless-stopped
+        network_mode: host        # importante en LXC
+        env:
+          DATABASE_URL: "{{ database_url }}"
+          REDIS_URL: "{{ redis_url }}"
+          RABBITMQ_URL: "{{ rabbitmq_url }}"
+          NODE_ENV: "{{ node_env }}"
+          SESSION_SECRET: "{{ session_secret }}"
+        # con network_mode: host, no hace falta published_ports,
+        # la app escuchará en el puerto 3000 del host directamente.
+
+    - name: 🚀 Levantar contenedor WORKER
+      community.docker.docker_container:
+        name: "{{ worker_container_name }}"
+        image: "{{ app_image }}"
+        restart_policy: unless-stopped
+        network_mode: host
+        entrypoint:
+          - "node"
+        command:
+          - "workers/emailWorker.js"
+        env:
+          RABBITMQ_URL: "{{ rabbitmq_url }}"
+          NODE_ENV: "{{ node_env }}"
+
+    # ----------------------------
+    # ✅ VERIFICACIÓN FINAL
+    # ----------------------------
+    - name: 🔎 Mostrar estado de los contenedores
+      shell: >
+        docker ps --filter "name={{ app_container_name }}" --filter "name={{ worker_container_name }}" \
+        --format 'table {{ "{{.Names}}\t{{.Status}}\t{{.Ports}}" }}'
+      register: app_worker_status
+      changed_when: false
+
+    - debug:
+        msg: "{{ app_worker_status.stdout_lines }}"
