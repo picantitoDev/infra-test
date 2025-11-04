@@ -5,7 +5,6 @@ resource "proxmox_virtual_environment_container" "nat_gateway" {
   initialization {
     hostname = "nat-gateway"
 
-    # eth0 → external/public
     ip_config {
       ipv4 {
         address = "192.168.0.220/24"
@@ -13,14 +12,12 @@ resource "proxmox_virtual_environment_container" "nat_gateway" {
       }
     }
 
-    # eth1 → VLAN 10 (transit towards LAN containers)
     ip_config {
       ipv4 {
         address = "10.10.0.100/24"
       }
     }
 
-    # eth2 → VLAN 40 (isolation network for NAT)
     ip_config {
       ipv4 {
         address = "10.40.0.1/24"

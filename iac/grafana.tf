@@ -1,15 +1,23 @@
-resource "proxmox_virtual_environment_container" "database" {
+resource "proxmox_virtual_environment_container" "grafana" {
   provider   = proxmox.rootpam
-  vm_id      = 705
+  vm_id      = 708
   node_name  = "proxmox"
 
   initialization {
-    hostname = "database"
+    hostname = "grafana"
 
+    # eth0: public LAN
     ip_config {
       ipv4 {
-        address = "10.30.0.1/24"
-        gateway = "10.30.0.254"
+        address = "192.168.0.212/24"
+      }
+    }
+
+    # eth1: VLAN 10 private network
+    ip_config {
+      ipv4 {
+        address = "10.10.0.2/24"
+        gateway = "10.10.0.254"
       }
     }
 
@@ -27,15 +35,21 @@ resource "proxmox_virtual_environment_container" "database" {
   cpu { cores = 1 }
   memory { dedicated = 1024 }
 
-  network_interface {
-    name    = "eth0"
-    bridge  = "vmbr0"
-    vlan_id = 30
-  }
-
   disk {
     datastore_id = "local-lvm"
-    size         = 16
+    size         = 10
+  }
+
+  # network interfaces
+  network_interface {
+    name   = "eth0"
+    bridge = "vmbr0"
+  }
+
+  network_interface {
+    name    = "eth1"
+    bridge  = "vmbr0"
+    vlan_id = 10
   }
 
   unprivileged = false
