@@ -1,0 +1,12 @@
+- name: ⚙️ Bootstrap connectivity test (no Python required)
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: 🔍 Test SSH connection
+      raw: echo "✅ Connected to $(hostname)"
+    - name: 📡 Show IPs
+      raw: ip -4 addr show | grep 'inet '
+      register: ip_info
+      ignore_errors: true
+    - debug:
+        var: ip_info.stdout
