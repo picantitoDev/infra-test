@@ -31,8 +31,8 @@ resource "proxmox_virtual_environment_container" "nat_gateway" {
   }
   
   operating_system {
-    type             = "alpine"
-    template_file_id = "local:vztmpl/devuan-5.0-standard_5.0_amd64.tar.gz"
+    type             = "debian"
+    template_file_id = "local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst"
   }
 
   cpu {

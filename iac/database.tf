@@ -20,12 +20,17 @@ resource "proxmox_virtual_environment_container" "database" {
   }
 
   operating_system {
-    type             = "alpine"
+    type             = "debian"
     template_file_id = "local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst"
   }
 
-  cpu { cores = 1 }
-  memory { dedicated = 1024 }
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 1024
+  }
 
   network_interface {
     name    = "eth0"
@@ -45,4 +50,5 @@ resource "proxmox_virtual_environment_container" "database" {
     keyctl  = true
     fuse    = true
   }
+
 }

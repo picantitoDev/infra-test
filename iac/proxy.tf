@@ -6,14 +6,12 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
   initialization {
     hostname = "proxy"
 
-    # eth0: public LAN
     ip_config {
       ipv4 {
         address = "192.168.0.222/24"
       }
     }
 
-    # eth1: VLAN 10 private network
     ip_config {
       ipv4 {
         address = "10.10.0.1/24"
@@ -28,7 +26,7 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
   }
 
   operating_system {
-    type             = "alpine"
+    type             = "debian"
     template_file_id = "local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst"
   }
 
@@ -40,7 +38,6 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
     size         = 2
   }
 
-  # network interfaces
   network_interface {
     name   = "eth0"
     bridge = "vmbr0"

@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_container" "grafana" {
   }
 
   operating_system {
-    type             = "alpine"
+    type             = "debian"
     template_file_id = "local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst"
   }
 
