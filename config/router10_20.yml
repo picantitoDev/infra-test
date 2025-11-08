@@ -1,0 +1,171 @@
+---
+- name: Configure Router 10_20
+  hosts: router_10_20
+  become: yes
+  vars:
+    interfaces:
+      - all
+      - default
+      - eth0
+      - eth1
+    nat_gateway_ip: 10.10.0.100
+    nat_gateway_interface: eth0
+    vlan30_network: 10.30.0.0/24
+    vlan30_gateway: 10.20.0.253
+    vlan30_interface: eth1
+    dns_servers:
+      - 1.1.1.1
+      - 9.9.9.9
+      - 208.67.222.222
+
+  tasks:
+    # ==============================================
+    # 1️⃣ Enable IP forwarding (core routing feature)
+    # ==============================================
+    - name: Enable IP forwarding (runtime)
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        sysctl_set: yes
+        reload: yes
+
+    - name: Ensure IP forwarding is persistent
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        sysctl_file: /etc/sysctl.conf
+        reload: yes
+
+    # =====================================================
+    # 2️⃣ Disable Reverse Path Filtering (rp_filter)
+    # -----------------------------------------------------
+    # This prevents the kernel from dropping legitimate
+    # packets in asymmetric routes (especially useful when
+    # traffic returns through a different interface).
+    # =====================================================
+    - name: Disable rp_filter for all interfaces (runtime)
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.{{ item }}.rp_filter"
+        value: '0'
+        state: present
+        sysctl_set: yes
+        reload: yes
+      loop: "{{ interfaces }}"
+
+    - name: Ensure rp_filter settings are persistent
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.{{ item }}.rp_filter"
+        value: '0'
+        state: present
+        sysctl_file: /etc/sysctl.conf
+        reload: yes
+      loop: "{{ interfaces }}"
+
+    # ===============================================
+    # 3️⃣ Flush any old nftables rules
+    # ===============================================
+    - name: Flush existing nftables rules
+      ansible.builtin.command:
+        cmd: nft flush ruleset
+      changed_when: true
+      failed_when: false
+
+    # ===============================================
+    # 4️⃣ Apply minimal nftables configuration
+    # -----------------------------------------------
+    # This allows:
+    #  - Local SSH and ICMP
+    #  - Forwarding between VLAN10 and VLAN20
+    # ===============================================
+    - name: Deploy nftables configuration
+      ansible.builtin.copy:
+        dest: /etc/nftables.conf
+        content: |
+          table inet filter {
+              chain input {
+                  type filter hook input priority 0;
+                  policy drop;
+                  iifname "lo" accept;
+                  ct state established,related accept;
+                  ip protocol icmp accept;
+                  tcp dport 22 accept;   # allow SSH
+              }
+              chain forward {
+                  type filter hook forward priority 0;
+                  policy accept;          # allow routing freely between VLANs
+              }
+              chain output {
+                  type filter hook output priority 0;
+                  policy accept;
+              }
+          }
+        mode: '0644'
+        owner: root
+        group: root
+      notify: reload nftables
+
+    - name: Load nftables rules immediately
+      ansible.builtin.command:
+        cmd: nft -f /etc/nftables.conf
+      changed_when: true
+
+    # ===============================================
+    # 5️⃣ Set default route toward NAT gateway
+    # ===============================================
+    - name: Add default route to NAT gateway (runtime)
+      ansible.builtin.command:
+        cmd: "ip route add default via {{ nat_gateway_ip }} dev {{ nat_gateway_interface }}"
+      register: default_route_result
+      failed_when: default_route_result.rc != 0 and 'File exists' not in default_route_result.stderr
+      changed_when: default_route_result.rc == 0
+
+    # ===============================================
+    # 6️⃣ Add static route to reach VLAN30 (via router 20_30)
+    # -----------------------------------------------
+    # Ensures connectivity to 10.30.0.0/24 network.
+    # ===============================================
+    - name: Add static route to VLAN30 (runtime)
+      ansible.builtin.command:
+        cmd: "ip route add {{ vlan30_network }} via {{ vlan30_gateway }} dev {{ vlan30_interface }}"
+      register: vlan30_route_result
+      failed_when: vlan30_route_result.rc != 0 and 'File exists' not in vlan30_route_result.stderr
+      changed_when: vlan30_route_result.rc == 0
+
+    - name: Ensure static route to VLAN30 is persistent
+      ansible.builtin.blockinfile:
+        path: /etc/network/interfaces
+        block: |
+          # Static route to VLAN30 (via router-20-30)
+          up ip route add {{ vlan30_network }} via {{ vlan30_gateway }} dev {{ vlan30_interface }}
+        marker: "# {mark} ANSIBLE MANAGED VLAN30 ROUTE"
+        create: yes
+        mode: '0644'
+
+    # ===============================================
+    # 7️⃣ Configure persistent DNS
+    # ===============================================
+    - name: Configure DNS servers in resolv.conf
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        content: |
+          {% for dns in dns_servers %}
+          nameserver {{ dns }}
+          {% endfor %}
+        mode: '0644'
+        owner: root
+        group: root
+
+    # ===============================================
+    # ✅ Wrap-up
+    # ===============================================
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "✅ Router 10_20 configuration complete on {{ inventory_hostname }}"
+
+  handlers:
+    - name: reload nftables
+      ansible.builtin.command:
+        cmd: nft -f /etc/nftables.conf
+      changed_when: true
