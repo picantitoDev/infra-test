@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: {{ rabbitmq_image }}
+    container_name: {{ rabbitmq_container_name }}
+    privileged: true
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      RABBITMQ_DEFAULT_USER: {{ rabbitmq_user }}
+      RABBITMQ_DEFAULT_PASS: {{ rabbitmq_pass }}
+    # host mode → no necesitas publicar puertos, pero si lo prefieres explícitamente:
+    ports:
+      - "{{ rabbitmq_amqp_port }}:5672"
+      - "{{ rabbitmq_http_port }}:15672"

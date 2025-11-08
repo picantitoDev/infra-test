@@ -1,7 +1,7 @@
 ---
 # ==============================================================
 # Role: database
-# Description: Despliega el servidor PostgreSQL dentro de un contenedor Docker utilizando Docker Compose
+# Description: Despliega PostgreSQL dentro de un contenedor Docker utilizando Docker Compose
 # ==============================================================
 
 # ----------------------------
@@ -19,7 +19,22 @@
     source: pull
 
 # ----------------------------
-# 2️⃣ Crear archivo docker-compose.yml desde el template
+# 2️⃣ Crear estructura de directorios
+# ----------------------------
+- name: Crear directorio base para PostgreSQL (compose y datos)
+  ansible.builtin.file:
+    path: "/opt/docker/postgres"
+    state: directory
+    mode: "0755"
+
+- name: Crear directorio de datos de PostgreSQL
+  ansible.builtin.file:
+    path: "{{ postgres_data_dir }}"
+    state: directory
+    mode: "0755"
+
+# ----------------------------
+# 3️⃣ Crear archivo docker-compose.yml desde el template
 # ----------------------------
 - name: Crear archivo docker-compose.yml para PostgreSQL
   ansible.builtin.template:
@@ -27,17 +42,24 @@
     dest: "/opt/docker/postgres/docker-compose.yml"
     mode: "0644"
 
+- name: Eliminar contenedor anterior si existe
+  ansible.builtin.shell: |
+    docker rm -f {{ container_name }} || true
+  args:
+    executable: /bin/bash
+  ignore_errors: true
+
 # ----------------------------
-# 3️⃣ Levantar contenedor con Docker Compose
+# 4️⃣ Levantar contenedor con Docker Compose
 # ----------------------------
 - name: Levantar contenedor PostgreSQL con Docker Compose
   ansible.builtin.shell: |
-    cd /opt/docker/postgres && docker-compose up -d
+    cd /opt/docker/postgres && docker compose up -d
   args:
     executable: /bin/bash
 
 # ----------------------------
-# 4️⃣ Verificación final
+# 5️⃣ Verificación final
 # ----------------------------
 - name: Mostrar estado del contenedor PostgreSQL
   ansible.builtin.shell: >

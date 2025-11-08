@@ -1,0 +1,147 @@
+---
+- name: Configure Router 20_30
+  hosts: router_20_30
+  become: yes
+  vars:
+    interfaces:
+      - all
+      - default
+      - eth0
+      - eth1
+    upstream_router_ip: 10.20.0.254
+    upstream_interface: eth0
+    dns_servers:
+      - 1.1.1.1
+      - 9.9.9.9
+      - 208.67.222.222
+
+  tasks:
+    # ==============================================
+    # 1️⃣ Enable IP forwarding (core routing feature)
+    # ==============================================
+    - name: Enable IP forwarding (runtime)
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        sysctl_set: yes
+        reload: yes
+
+    - name: Ensure IP forwarding is persistent
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        sysctl_file: /etc/sysctl.conf
+        reload: yes
+
+    # =====================================================
+    # 2️⃣ Disable Reverse Path Filtering (rp_filter)
+    # -----------------------------------------------------
+    # This prevents the kernel from dropping legitimate
+    # packets in asymmetric routes (especially useful when
+    # traffic returns through a different interface).
+    # =====================================================
+    - name: Disable rp_filter for all interfaces (runtime)
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.{{ item }}.rp_filter"
+        value: '0'
+        state: present
+        sysctl_set: yes
+        reload: yes
+      loop: "{{ interfaces }}"
+
+    - name: Ensure rp_filter settings are persistent
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.{{ item }}.rp_filter"
+        value: '0'
+        state: present
+        sysctl_file: /etc/sysctl.conf
+        reload: yes
+      loop: "{{ interfaces }}"
+
+    # ===============================================
+    # 3️⃣ Flush any old nftables rules
+    # ===============================================
+    - name: Flush existing nftables rules
+      ansible.builtin.command:
+        cmd: nft flush ruleset
+      changed_when: true
+      failed_when: false
+
+    # ===============================================
+    # 4️⃣ Apply minimal nftables configuration
+    # -----------------------------------------------
+    # This allows:
+    #  - Local SSH and ICMP
+    #  - Forwarding between VLAN20 and VLAN30
+    #  - NO NAT (this is a pure router)
+    # ===============================================
+    - name: Deploy nftables configuration
+      ansible.builtin.copy:
+        dest: /etc/nftables.conf
+        content: |
+          table inet filter {
+              chain input {
+                  type filter hook input priority 0;
+                  policy drop;
+                  iifname "lo" accept;
+                  ct state established,related accept;
+                  ip protocol icmp accept;
+                  tcp dport 22 accept;
+              }
+              chain forward {
+                  type filter hook forward priority 0;
+                  policy accept;  # allow VLAN20 <-> VLAN30 routing
+              }
+              chain output {
+                  type filter hook output priority 0;
+                  policy accept;
+              }
+          }
+        mode: '0644'
+        owner: root
+        group: root
+      notify: reload nftables
+
+    - name: Load nftables rules immediately
+      ansible.builtin.command:
+        cmd: nft -f /etc/nftables.conf
+      changed_when: true
+
+    # ===============================================
+    # 5️⃣ Set default route toward Router 10_20
+    # ===============================================
+    - name: Add default route to Router 10_20 (runtime)
+      ansible.builtin.command:
+        cmd: "ip route add default via {{ upstream_router_ip }} dev {{ upstream_interface }}"
+      register: default_route_result
+      failed_when: default_route_result.rc != 0 and 'File exists' not in default_route_result.stderr
+      changed_when: default_route_result.rc == 0
+
+    # ===============================================
+    # 6️⃣ Configure persistent DNS
+    # ===============================================
+    - name: Configure DNS servers in resolv.conf
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        content: |
+          {% for dns in dns_servers %}
+          nameserver {{ dns }}
+          {% endfor %}
+        mode: '0644'
+        owner: root
+        group: root
+
+    # ===============================================
+    # ✅ Wrap-up
+    # ===============================================
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "✅ Router 20_30 configuration complete on {{ inventory_hostname }}"
+
+  handlers:
+    - name: reload nftables
+      ansible.builtin.command:
+        cmd: nft -f /etc/nftables.conf
+      changed_when: true

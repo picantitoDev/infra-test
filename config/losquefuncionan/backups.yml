@@ -1,0 +1,134 @@
+---
+- name: 💾 Configurar backup automatizado de PostgreSQL
+  hosts: backups
+  become: yes
+  vars:
+    db_host: "10.30.0.1"
+    db_user: "piero"
+    db_name: "sgi"
+    db_pass: "piero"
+    backup_dir: "/mnt/solid/postgres_backups"
+    log_file: "/var/log/postgres_backup.log"
+    keep_days: 7
+    backup_script: "/usr/local/bin/postgres_backup.sh"
+
+  tasks:
+    # ----------------------------
+    # 1️⃣ DEPENDENCIAS Y REPO PGDG
+    # ----------------------------
+    - name: Instalar utilidades base
+      apt:
+        name:
+          - curl
+          - ca-certificates
+          - gnupg
+        update_cache: yes
+        state: present
+
+    - name: Crear directorio para llaves GPG
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Agregar llave GPG del repositorio de PostgreSQL
+      shell: |
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+        gpg --dearmor -o /etc/apt/keyrings/pgdg.gpg
+      args:
+        creates: /etc/apt/keyrings/pgdg.gpg
+
+    - name: Agregar repositorio oficial de PostgreSQL 16
+      copy:
+        dest: /etc/apt/sources.list.d/pgdg.list
+        content: |
+          deb [signed-by=/etc/apt/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main
+        mode: "0644"
+
+    - name: Instalar cliente PostgreSQL 16
+      apt:
+        name: postgresql-client-16
+        state: present
+        update_cache: yes
+
+    # ----------------------------
+    # 2️⃣ DIRECTORIOS Y LOGS
+    # ----------------------------
+    - name: Crear directorio de backups
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Crear archivo de log si no existe
+      file:
+        path: "{{ log_file }}"
+        state: touch
+        mode: "0644"
+
+    # ----------------------------
+    # 3️⃣ SCRIPT DE BACKUP
+    # ----------------------------
+    - name: Crear script de backup PostgreSQL
+      copy:
+        dest: "{{ backup_script }}"
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # ===========================================
+          # PostgreSQL automated backup script
+          # LXC: backups ({{ ansible_host }})
+          # Database host: {{ db_host }}
+          # ===========================================
+
+          DATE=$(date +%Y-%m-%d_%H-%M)
+          DEST="{{ backup_dir }}"
+          LOGFILE="{{ log_file }}"
+          KEEP_DAYS={{ keep_days }}
+
+          DB_HOST="{{ db_host }}"
+          DB_USER="{{ db_user }}"
+          DB_NAME="{{ db_name }}"
+          DB_PASS="{{ db_pass }}"
+
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iniciando backup..." >> "$LOGFILE"
+
+          FILE="$DEST/backup_${DB_NAME}_${DATE}.dump"
+          PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -F c -f "$FILE"
+          STATUS=$?
+
+          if [ $STATUS -eq 0 ]; then
+              echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✅ Backup completado correctamente: $FILE" >> "$LOGFILE"
+          else
+              echo "[$(date '+%Y-%m-%d %H:%M:%S')] ❌ Error al generar backup (exit code $STATUS)" >> "$LOGFILE"
+          fi
+
+          find "$DEST" -type f -mtime +$KEEP_DAYS -name "backup_*.dump" -exec rm {} \;
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Limpieza completada. Archivos mayores a $KEEP_DAYS días eliminados." >> "$LOGFILE"
+          echo "-----------------------------------------------------------" >> "$LOGFILE"
+
+    # ----------------------------
+    # 4️⃣ CRON JOB
+    # ----------------------------
+    - name: Configurar tarea diaria de backup (2 AM)
+      cron:
+        name: "PostgreSQL automatic backup"
+        user: root
+        minute: "0"
+        hour: "2"
+        job: "/usr/local/bin/postgres_backup.sh"
+
+    # ----------------------------
+    # 5️⃣ VERIFICACIÓN INICIAL
+    # ----------------------------
+    - name: Ejecutar primer backup de prueba
+      shell: "{{ backup_script }}"
+      register: backup_result
+      ignore_errors: yes
+
+    - name: Mostrar resultado del backup inicial
+      debug:
+        msg:
+          - "🚀 Resultado del primer backup:"
+          - "{{ backup_result.stdout_lines | default(['(sin salida)']) }}"
+          - "⚙️ Revisar log en {{ log_file }}"

@@ -1,0 +1,49 @@
+---
+# playbooks/site.yml
+# Orquestación completa en orden
+
+- name: 05 - Redis
+  hosts: redis
+  become: true
+  roles: [redis]
+  tags: [data, redis]
+
+# (Opcional) RabbitMQ, si ya tienes el rol
+- name: 06 - RabbitMQ
+  hosts: rabbit
+  become: true
+  roles: [rabbitmq]
+  tags: [data, rabbitmq]
+
+# 3) Aplicación y fronting
+- name: 07 - Aplicación (API/App + Worker)
+  hosts: app
+  become: true
+  roles: [api]     # usa el nombre de tu rol de app
+  tags: [app]
+
+- name: 08 - Reverse Proxy (NGINX)
+  hosts: proxy
+  become: true
+  roles: [reverse_proxy]
+  tags: [proxy, nginx]
+
+# 4) Observabilidad
+- name: 09 - Grafana + Loki
+  hosts: grafana_loki
+  become: true
+  roles: [grafana_loki]
+  tags: [observability, grafana, loki]
+
+- name: 10 - Promtail (NFS client + compose)
+  hosts: promtail
+  become: true
+  roles: [promtail]
+  tags: [observability, promtail]
+
+# 5) Backups
+- name: 11 - Backups PostgreSQL (pg_dump + cron)
+  hosts: backups
+  become: true
+  roles: [backups]
+  tags: [backups]

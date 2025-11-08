@@ -38,11 +38,9 @@
 # ----------------------------
 - name: Levantar contenedor Redis con Docker Compose
   ansible.builtin.shell: |
-    cd {{ docker_compose_dir }} && docker-compose up -d
+    cd {{ docker_compose_dir }} && docker compose up -d
   args:
     executable: /bin/bash
-  notify:
-    - restart redis container
 
 # ----------------------------
 # 4️⃣ Verificación final

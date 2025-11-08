@@ -1,7 +1,3 @@
----
-# 🧩 Despliegue completo de infraestructura Bravo SAC
-# Este playbook ejecuta todos los demás en orden
-
 - import_playbook: 00_bootstrap.yml
 - import_playbook: natgateway.yml
 - import_playbook: router10_20.yml
