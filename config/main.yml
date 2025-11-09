@@ -1,0 +1,16 @@
+---
+# 🧩 Despliegue completo de infraestructura Bravo SAC
+# Este playbook ejecuta todos los demás en orden
+
+- import_playbook: 00_bootstrap.yml
+- import_playbook: natgateway.yml
+- import_playbook: router10_20.yml
+- import_playbook: router20_30.yml
+- import_playbook: database.yml
+- import_playbook: redis.yml
+- import_playbook: rabbit.yml
+- import_playbook: app.yml
+- import_playbook: reverse_proxy.yml
+- import_playbook: grafana_loki.yml
+- import_playbook: promtail.yml
+- import_playbook: backups.yml

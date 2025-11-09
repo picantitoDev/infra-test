@@ -1,0 +1,167 @@
+---
+- name: 🌐 Desplegar Nginx reverse proxy con Docker
+  hosts: proxy
+  become: yes
+
+  vars:
+    proxy_dir: /opt/reverse-proxy
+    cert_path: "{{ proxy_dir }}/certs"
+    nfs_client_ip: "10.10.0.3"
+
+  tasks:
+    # --- Instalar Docker ---
+    - name: Actualizar caché de APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar dependencias requeridas
+      apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: Crear directorio para clave GPG de Docker
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Descargar clave GPG de Docker
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Obtener arquitectura del sistema
+      command: dpkg --print-architecture
+      register: system_arch
+      changed_when: false
+
+    - name: Obtener codename de Debian
+      shell: . /etc/os-release && echo "$VERSION_CODENAME"
+      register: debian_codename
+      changed_when: false
+
+    - name: Agregar repositorio oficial de Docker
+      apt_repository:
+        repo: "deb [arch={{ system_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ debian_codename.stdout }} stable"
+        filename: docker
+        state: present
+
+    - name: Actualizar caché tras agregar repo Docker
+      apt:
+        update_cache: yes
+
+    - name: Instalar Docker Engine y complementos
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Asegurar que Docker esté iniciado y habilitado
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+        # ----------------------------
+    # CONFIGURACIÓN NFS SERVER
+    # ----------------------------
+    - name: Instalar NFS server
+      apt:
+        name: nfs-kernel-server
+        state: present
+
+    - name: Asegurar permisos correctos en /var/lib/docker
+      file:
+        path: /var/lib/docker
+        mode: "0755"
+        recurse: no
+
+    - name: Permitir lectura a contenedores
+      file:
+        path: /var/lib/docker/containers
+        mode: "o+rx"
+        recurse: yes
+
+    - name: Configurar exportación NFS
+      lineinfile:
+        path: /etc/exports
+        line: "/var/lib/docker/containers {{ nfs_client_ip }}(rw,sync,no_subtree_check,no_root_squash)"
+        create: yes
+
+    - name: Exportar recursos NFS
+      command: exportfs -rav
+
+    - name: Reiniciar servicio NFS
+      systemd:
+        name: nfs-kernel-server
+        state: restarted
+        enabled: yes
+
+    # --- Configuración de archivos ---
+    - name: Crear directorios necesarios
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ proxy_dir }}"
+        - "{{ proxy_dir }}/nginx"
+        - "{{ cert_path }}"
+
+    - name: Copiar configuración nginx.conf
+      copy:
+        src: reverse-proxy/nginx/nginx.conf
+        dest: "{{ proxy_dir }}/nginx/nginx.conf"
+        mode: "0644"
+
+    - name: Copiar certificados SSL
+      copy:
+        src: "reverse-proxy/certs/{{ item }}"
+        dest: "{{ cert_path }}/{{ item }}"
+        mode: "0600"
+      loop:
+        - fullchain.pem
+        - cert-key.pem
+
+    - name: Crear docker-compose.yml
+      copy:
+        dest: "{{ proxy_dir }}/docker-compose.yml"
+        mode: "0644"
+        content: |
+          version: '3.8'
+          services:
+            nginx-proxy:
+              image: nginx:1.25-alpine
+              container_name: nginx-proxy
+              restart: always
+              privileged: true
+              network_mode: host
+              ports: []
+              volumes:
+                - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                - ${CERT_PATH}/fullchain.pem:/etc/ssl/certs/fullchain.pem:ro
+                - ${CERT_PATH}/cert-key.pem:/etc/ssl/private/cert-key.pem:ro
+
+    # --- Despliegue ---
+    - name: Levantar Nginx reverse proxy (con variable CERT_PATH)
+      shell: |
+        cd {{ proxy_dir }}
+        CERT_PATH={{ cert_path }} docker compose up -d
+      args:
+        executable: /bin/bash
+
+    - name: Mostrar contenedores en ejecución
+      shell: docker ps --filter "name=nginx-proxy" --format 'table {{ "{{.Names}}\t{{.Status}}\t{{.Ports}}" }}'
+      register: proxy_status
+      changed_when: false
+
+    - debug:
+        msg: "{{ proxy_status.stdout_lines }}"
