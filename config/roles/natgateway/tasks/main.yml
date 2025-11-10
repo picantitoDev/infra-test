@@ -1,0 +1,68 @@
+---
+- name: Enable IP forwarding (runtime)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    sysctl_set: yes
+    reload: yes
+
+- name: Ensure IP forwarding is persistent
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    sysctl_file: /etc/sysctl.conf
+    reload: yes
+
+- name: Flush existing nftables rules
+  ansible.builtin.command: nft flush ruleset
+  changed_when: true
+
+- name: Deploy nftables configuration
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload nftables
+
+- name: Load nftables rules immediately
+  ansible.builtin.command: nft -f /etc/nftables.conf
+  changed_when: true
+
+- name: Configure DNS servers in resolv.conf
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    content: |
+      {% for dns in dns_servers %}
+      nameserver {{ dns }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Add static routes (runtime)
+  ansible.builtin.command:
+    cmd: "ip route add {{ item.dest }} via {{ item.via }} dev {{ item.dev }}"
+  loop: "{{ static_routes }}"
+  register: route_result
+  failed_when: route_result.rc != 0 and 'File exists' not in route_result.stderr
+  changed_when: route_result.rc == 0
+
+- name: Ensure static routes are persistent
+  ansible.builtin.blockinfile:
+    path: /etc/network/interfaces
+    block: |
+      # Static routes for VLAN20 and VLAN30
+      {% for route in static_routes %}
+      up ip route add {{ route.dest }} via {{ route.via }} dev {{ route.dev }}
+      {% endfor %}
+    marker: "# {mark} ANSIBLE MANAGED STATIC ROUTES"
+    create: yes
+    mode: '0644'
+
+- name: Display completion message
+  ansible.builtin.debug:
+    msg: "NAT Gateway setup complete on {{ inventory_hostname }}"

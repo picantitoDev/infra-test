@@ -1,0 +1,6 @@
+---
+- name: Test Router 20_30 Role
+  hosts: router_20_30
+  become: true
+  roles:
+    - router_20_30

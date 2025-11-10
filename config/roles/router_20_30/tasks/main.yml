@@ -1,0 +1,95 @@
+---
+# ==============================================================
+# Role: router_20_30
+# Description: Configures routing between VLAN20 and VLAN30,
+#              sets default route toward Router 10_20, no NAT.
+# ==============================================================
+
+- name: Enable IP forwarding (runtime)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    sysctl_set: yes
+    reload: yes
+
+- name: Ensure IP forwarding is persistent
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    sysctl_file: /etc/sysctl.conf
+    reload: yes
+
+# =====================================================
+# Disable Reverse Path Filtering (rp_filter)
+# =====================================================
+- name: Disable rp_filter for all interfaces (runtime)
+  ansible.posix.sysctl:
+    name: "net.ipv4.conf.{{ item }}.rp_filter"
+    value: '0'
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop: "{{ interfaces }}"
+
+- name: Ensure rp_filter settings are persistent
+  ansible.posix.sysctl:
+    name: "net.ipv4.conf.{{ item }}.rp_filter"
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.conf
+    reload: yes
+  loop: "{{ interfaces }}"
+
+# =====================================================
+# nftables basic router configuration (no NAT)
+# =====================================================
+- name: Flush existing nftables rules
+  ansible.builtin.command: nft flush ruleset
+  changed_when: true
+  failed_when: false
+
+- name: Deploy nftables configuration
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload nftables
+
+- name: Load nftables rules immediately
+  ansible.builtin.command: nft -f /etc/nftables.conf
+  changed_when: true
+
+# =====================================================
+# Routing configuration
+# =====================================================
+- name: Add default route to Router 10_20 (runtime)
+  ansible.builtin.command:
+    cmd: "ip route add default via {{ upstream_router_ip }} dev {{ upstream_interface }}"
+  register: default_route_result
+  failed_when: default_route_result.rc != 0 and 'File exists' not in default_route_result.stderr
+  changed_when: default_route_result.rc == 0
+
+# =====================================================
+# DNS configuration
+# =====================================================
+- name: Configure DNS servers in resolv.conf
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    content: |
+      {% for dns in dns_servers %}
+      nameserver {{ dns }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: '0644'
+
+# =====================================================
+# Completion message
+# =====================================================
+- name: Display completion message
+  ansible.builtin.debug:
+    msg: "✅ Router 20_30 configuration complete on {{ inventory_hostname }}"

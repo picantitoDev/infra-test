@@ -1,0 +1,26 @@
+table inet filter {
+    chain input {
+        type filter hook input priority filter; policy drop;
+        iifname "lo" accept
+        ct state established,related accept
+    }
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+        iifname "{{ internal_interface }}" oifname "{{ external_interface }}" ct state established,related,new accept
+        iifname "{{ external_interface }}" oifname "{{ internal_interface }}" ct state established,related accept
+    }
+    chain output {
+        type filter hook output priority filter; policy drop;
+        oifname "lo" accept
+        ct state established,related,new accept
+    }
+}
+
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        {% for subnet in internal_subnets %}
+        ip saddr {{ subnet }} oifname "{{ external_interface }}" masquerade
+        {% endfor %}
+    }
+}
