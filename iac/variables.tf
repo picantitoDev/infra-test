@@ -16,7 +16,9 @@ variable "root_password" {
 }
 
 variable "ansible_key" {
-  default = "~/.ssh/ansible.pub"
+  description = "Ruta al archivo de clave pública de Ansible"
+  type        = string
+  default     = "${path.module}/../config/ansible.pub"
 }
 
 variable "proxmox_host" {
