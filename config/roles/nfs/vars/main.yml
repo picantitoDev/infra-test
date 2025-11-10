@@ -1,0 +1,26 @@
+---
+# ==============================================================
+# Role: nfs
+# Vars: valores por defecto para servidor o cliente NFS
+# ==============================================================
+
+# Tipo de rol (server | client)
+nfs_role: "server"
+
+# ----------------------------
+# Configuración SERVER
+# ----------------------------
+nfs_exports:
+  - path: "/var/lib/docker/containers"
+    client: "10.10.0.3"
+    options: "rw,sync,no_subtree_check,no_root_squash"
+
+# ----------------------------
+# Configuración CLIENTE
+# ----------------------------
+nfs_mounts: []
+# Ejemplo:
+# nfs_mounts:
+#   - { src: "10.10.0.1:/var/lib/docker/containers", path: "/mnt/proxy-logs/docker" }
+#   - { src: "10.20.0.1:/var/lib/docker/containers", path: "/mnt/app-logs/docker" }
+#   - { src: "10.30.0.1:/var/lib/docker/containers", path: "/mnt/db-logs/docker" }

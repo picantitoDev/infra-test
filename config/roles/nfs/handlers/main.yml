@@ -1,0 +1,10 @@
+---
+# ==============================================================
+# Handlers: reinicio de servicio NFS
+# ==============================================================
+
+- name: restart nfs
+  ansible.builtin.systemd:
+    name: nfs-kernel-server
+    state: restarted
+    enabled: yes

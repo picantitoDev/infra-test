@@ -1,0 +1,8 @@
+# ==============================================================
+# Archivo generado automáticamente por Ansible
+# Role: nfs (SERVER)
+# ==============================================================
+
+{% for export in nfs_exports %}
+{{ export.path }} {{ export.client }}({{ export.options }})
+{% endfor %}
