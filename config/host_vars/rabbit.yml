@@ -1,0 +1,2 @@
+hostname_alias: rabbitmq
+network_layer: vlan20

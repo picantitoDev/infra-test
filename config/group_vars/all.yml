@@ -1,0 +1,27 @@
+# =====================================================
+# group_vars/all.yml  —  Variables globales y neutrales
+# =====================================================
+
+# Contexto (puedes sobreescribirlo desde Jenkins con --extra-vars)
+env_stage: "staging"
+
+# Python
+ansible_python_interpreter: /usr/bin/python3
+
+# SSH / Conexión (sin ProxyJump aquí; eso ya lo defines por host)
+ansible_user: root
+ansible_become: true
+ansible_become_method: sudo
+ansible_ssh_common_args: "-o ForwardAgent=yes -A"
+ansible_connection_timeout: 60
+
+# Rutas base reutilizables (aún sin atarlas a servicios)
+base_dir: /opt
+config_dir: "{{ base_dir }}/config"
+logs_dir: "{{ base_dir }}/logs"
+backups_dir: "{{ base_dir }}/backups"
+
+# Referencias de red (útiles para plantillas y documentación)
+vlan10_network: "10.10.0.0/24"
+vlan20_network: "10.20.0.0/24"
+vlan30_network: "10.30.0.0/24"

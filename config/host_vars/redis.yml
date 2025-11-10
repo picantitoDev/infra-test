@@ -1,0 +1,2 @@
+hostname_alias: redis
+network_layer: vlan30
