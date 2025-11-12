@@ -1,0 +1,52 @@
+---
+# ----------------------------
+# 1️⃣ Login y Pull de imagen
+# ----------------------------
+- name: Autenticarse en Docker Hub
+  ansible.builtin.shell: |
+    echo "{{ docker_pat }}" | docker login -u {{ docker_user }} --password-stdin
+  args:
+    executable: /bin/bash
+
+- name: Descargar imagen personalizada de la App
+  community.docker.docker_image:
+    name: "{{ app_image }}"
+    source: pull
+
+# ----------------------------
+# 2️⃣ Crear directorio para Grafana y configurar Docker Compose
+# ----------------------------
+- name: Crear directorio para Docker Compose de la App
+  ansible.builtin.file:
+    path: "{{ grafana_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Crear archivo de configuración docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ grafana_dir }}/docker-compose.yml"
+    mode: '0644'
+
+# ----------------------------
+# 3️⃣ Ejecutar los contenedores con Docker Compose
+# ----------------------------
+- name: Desplegar App y Worker con Docker Compose
+  ansible.builtin.shell: |
+    cd {{ grafana_dir }}
+    docker-compose up -d
+  args:
+    executable: /bin/bash
+
+# ----------------------------
+# 4️⃣ Verificación Final
+# ----------------------------
+- name: Mostrar estado de los contenedores App y Worker
+  ansible.builtin.shell: >
+    docker ps --filter "name={{ app_container_name }}" --filter "name={{ worker_container_name }}" \
+    --format 'table {{ "{{.Names}}\t{{.Status}}\t{{.Ports}}" }}'
+  register: app_worker_status
+  changed_when: false
+
+- debug:
+    msg: "{{ app_worker_status.stdout_lines }}"

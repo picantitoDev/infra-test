@@ -1,0 +1,9 @@
+---
+db_host: "10.30.0.1"
+db_user: "piero"
+db_name: "sgi"
+db_pass: "piero"
+backup_dir: "/mnt/solid/postgres_backups"
+log_file: "/var/log/postgres_backup.log"
+keep_days: 7
+backup_script: "/usr/local/bin/postgres_backup.sh"

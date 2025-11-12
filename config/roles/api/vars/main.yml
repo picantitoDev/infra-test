@@ -1,0 +1,18 @@
+---
+docker_user: "picantito"
+docker_pat: "{{ lookup('env', 'DOCKER_TOKEN') }}"
+
+app_image: "picantito/infraestructure-as-code:app-1.0.0"
+app_container_name: "myapp"
+worker_container_name: "myapp-worker"
+
+# URLs de servicios externos
+database_url: "postgresql://piero:piero@10.30.0.1:5432/sgi"
+redis_url: "redis://:infra@10.30.0.2:6379"
+rabbitmq_url: "amqp://sgi_user:sgi_pass@10.20.0.2:5672"
+
+node_env: "production"
+session_secret: "infra"
+
+# NFS
+nfs_client_ip: "10.10.0.3"
