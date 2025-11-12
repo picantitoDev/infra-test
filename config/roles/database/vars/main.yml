@@ -1,7 +1,7 @@
 ---
 # ==============================================================
 # Role: database
-# Vars: configuración de PostgreSQL en contenedor Docker
+# Vars: Configuración del contenedor PostgreSQL
 # ==============================================================
 
 docker_user: "picantito"
@@ -12,4 +12,4 @@ container_name: "mypostgres"
 postgres_user: "piero"
 postgres_password: "piero"
 postgres_db: "sgi"
-postgres_data_dir: "/opt/postgres_data"
+postgres_data_dir: "/opt/postgres_data"   # Ruta para los datos de PostgreSQL

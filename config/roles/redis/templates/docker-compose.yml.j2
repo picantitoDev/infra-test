@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  redis:
+    image: {{ image_name }}
+    container_name: {{ container_name }}
+    environment:
+      REDIS_PASSWORD: {{ redis_password }}
+    ports:
+      - "{{ redis_port }}:6379"
+    restart: unless-stopped

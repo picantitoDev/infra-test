@@ -1,0 +1,9 @@
+---
+# ==============================================================
+# Role: grafana_loki
+# Vars: Variables para la instalación de Grafana y Loki
+# ==============================================================
+
+grafana_dir: /root/grafana
+grafana_admin_password: admin
+loki_retention_days: 14

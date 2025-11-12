@@ -1,11 +1,11 @@
 ---
 # ==============================================================
-# Handlers: acciones reactivas para la base de datos
+# Handlers: acciones reactivas para Redis
 # ==============================================================
 
-- name: restart postgres container
+- name: restart redis container
   ansible.builtin.shell: |
-    docker-compose restart postgres
+    cd {{ docker_compose_dir }} && docker-compose restart
   args:
-    chdir: /opt/docker/postgres
+    executable: /bin/bash
   changed_when: false

@@ -1,0 +1,49 @@
+---
+# ==============================================================
+# Role: grafana_loki
+# Description: Despliega Grafana y Loki usando Docker Compose
+# ==============================================================
+
+# ----------------------------
+# 1️⃣ Desplegar Grafana y Loki con Docker Compose
+# ----------------------------
+- name: Crear directorio de Grafana
+  ansible.builtin.file:
+    path: "{{ grafana_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Crear archivo de configuración de Loki
+  ansible.builtin.template:
+    src: loki-config.yaml.j2
+    dest: "{{ grafana_dir }}/loki-config.yaml"
+    mode: '0644'
+
+- name: Crear archivo docker-compose.yml para Grafana y Loki
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ grafana_dir }}/docker-compose.yml"
+    mode: '0644'
+
+# ----------------------------
+# 2️⃣ Ejecutar contenedores Grafana y Loki
+# ----------------------------
+- name: Desplegar contenedores con Docker Compose
+  ansible.builtin.shell: |
+    cd {{ grafana_dir }}
+    docker-compose up -d
+  args:
+    executable: /bin/bash
+
+# ----------------------------
+# 3️⃣ Verificación Final
+# ----------------------------
+- name: Mostrar estado de los contenedores
+  ansible.builtin.shell: >
+    docker ps --filter "name=grafana" --filter "name=loki" \
+    --format 'table {{ "{{.Names}}\t{{.Status}}\t{{.Ports}}" }}'
+  register: grafana_loki_status
+  changed_when: false
+
+- ansible.builtin.debug:
+    msg: "{{ grafana_loki_status.stdout_lines }}"

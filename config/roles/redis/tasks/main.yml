@@ -1,7 +1,7 @@
 ---
 # ==============================================================
-# Role: database
-# Description: Despliega el servidor PostgreSQL dentro de un contenedor Docker utilizando Docker Compose
+# Role: redis
+# Description: Despliega Redis dentro de un contenedor usando Docker Compose
 # ==============================================================
 
 # ----------------------------
@@ -13,38 +13,46 @@
   args:
     executable: /bin/bash
 
-- name: Descargar imagen personalizada de PostgreSQL
+- name: Descargar imagen personalizada de Redis
   community.docker.docker_image:
     name: "{{ image_name }}"
     source: pull
 
 # ----------------------------
-# 2️⃣ Crear archivo docker-compose.yml desde el template
+# 2️⃣ Crear archivo docker-compose.yml desde template
 # ----------------------------
-- name: Crear archivo docker-compose.yml para PostgreSQL
+- name: Crear directorio de despliegue de Redis
+  ansible.builtin.file:
+    path: "{{ docker_compose_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Generar archivo docker-compose.yml para Redis
   ansible.builtin.template:
     src: docker-compose.yml.j2
-    dest: "/opt/docker/postgres/docker-compose.yml"
+    dest: "{{ docker_compose_dir }}/docker-compose.yml"
     mode: "0644"
 
 # ----------------------------
 # 3️⃣ Levantar contenedor con Docker Compose
 # ----------------------------
-- name: Levantar contenedor PostgreSQL con Docker Compose
+- name: Levantar contenedor Redis con Docker Compose
   ansible.builtin.shell: |
-    cd /opt/docker/postgres && docker-compose up -d
+    cd {{ docker_compose_dir }} && docker-compose up -d
   args:
     executable: /bin/bash
+  notify:
+    - restart redis container
 
 # ----------------------------
 # 4️⃣ Verificación final
 # ----------------------------
-- name: Mostrar estado del contenedor PostgreSQL
+- name: Mostrar estado del contenedor Redis
   ansible.builtin.shell: >
     docker ps --filter "name={{ container_name }}" \
     --format 'table {{ "{{.Names}}\t{{.Status}}\t{{.Ports}}" }}'
-  register: container_status
+  register: redis_status
   changed_when: false
 
 - ansible.builtin.debug:
-    msg: "{{ container_status.stdout_lines }}"
+    msg: "{{ redis_status.stdout_lines }}"

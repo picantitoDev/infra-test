@@ -1,0 +1,17 @@
+---
+# ==============================================================
+# Role: redis
+# Vars: Configuración del contenedor Redis
+# ==============================================================
+
+docker_user: "picantito"
+docker_pat: "{{ lookup('env', 'DOCKER_TOKEN') }}"
+
+image_name: "picantito/infraestructure-as-code:redis-1.0.0"
+container_name: "myredis"
+
+redis_password: "infra"
+redis_port: 6379
+
+# Directorio donde se guardará el docker-compose.yml
+docker_compose_dir: "/opt/docker/redis"
