@@ -6,6 +6,5 @@ services:
     container_name: {{ container_name }}
     environment:
       REDIS_PASSWORD: {{ redis_password }}
-    ports:
-      - "{{ redis_port }}:6379"
+    network_mode: host
     restart: unless-stopped
