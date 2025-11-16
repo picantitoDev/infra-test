@@ -74,7 +74,7 @@
 - name: Desplegar Promtail con Docker Compose
   ansible.builtin.shell: |
     cd {{ promtail_dir }}
-    docker-compose up -d
+    docker compose up -d
   args:
     executable: /bin/bash
 

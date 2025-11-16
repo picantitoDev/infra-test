@@ -31,7 +31,7 @@
 - name: Desplegar contenedores con Docker Compose
   ansible.builtin.shell: |
     cd {{ grafana_dir }}
-    docker-compose up -d
+    docker compose up -d
   args:
     executable: /bin/bash
 
