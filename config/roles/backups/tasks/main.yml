@@ -46,9 +46,9 @@
     state: touch
     mode: "0644"
 
-- name: Copiar script de backup PostgreSQL
-  ansible.builtin.copy:
-    src: postgres_backup.sh
+- name: Renderizar script de backup PostgreSQL
+  ansible.builtin.template:
+    src: postgres_backup.sh.j2
     dest: "{{ backup_script }}"
     mode: "0755"
 
