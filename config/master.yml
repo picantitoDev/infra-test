@@ -1,41 +1,36 @@
-# ==============================================================
-# MASTER PLAYBOOK – Despliegue completo de toda la infraestructura
-# ==============================================================
-# Ejecuta en orden todos los roles de la arquitectura SGI
-# ==============================================================
 
 - name: 00 - Bootstrap del sistema
-  import_playbook: tests/00_bootstrap.yml
+  import_playbook: playbooks/00_bootstrap.yml
 
 - name: 01 - NAT Gateway
-  import_playbook: tests/00_natgateway.yml
+  import_playbook: playbooks/00_natgateway.yml
 
 - name: 02 - Router 10_20
-  import_playbook: tests/01_router_10_20.yml
+  import_playbook: playbooks/01_router_10_20.yml
 
 - name: 03 - Router 20_30
-  import_playbook: tests/02_router_20_30.yml
+  import_playbook: playbooks/02_router_20_30.yml
 
 - name: 04 - Base de Datos PostgreSQL
-  import_playbook: tests/03_database.yml
+  import_playbook: playbooks/03_database.yml
 
 - name: 05 - Redis
-  import_playbook: tests/04_redis.yml
+  import_playbook: playbooks/04_redis.yml
 
 - name: 06 - RabbitMQ
-  import_playbook: tests/05_rabbitmq.yml
+  import_playbook: playbooks/05_rabbitmq.yml
 
 - name: 07 - API (App + Worker)
-  import_playbook: tests/06_api.yml
+  import_playbook: playbooks/06_api.yml
 
 - name: 08 - Reverse Proxy (NGINX)
-  import_playbook: tests/07_reverse_proxy.yml
+  import_playbook: playbooks/07_reverse_proxy.yml
 
 - name: 09 - Grafana + Loki
-  import_playbook: tests/08_grafana_loki.yml
+  import_playbook: playbooks/08_grafana_loki.yml
 
 - name: 10 - Promtail (NFS Client + Compose)
-  import_playbook: tests/09_promtail.yml
+  import_playbook: playbooks/09_promtail.yml
 
 - name: 11 - Backups PostgreSQL
-  import_playbook: tests/10_backups.yml
+  import_playbook: playbooks/10_backups.yml

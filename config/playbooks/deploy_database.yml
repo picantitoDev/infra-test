@@ -1,6 +1,0 @@
----
-- name: 🚀 Desplegar servidor PostgreSQL con Docker y NFS
-  hosts: database
-  become: true
-  roles:
-    - database
