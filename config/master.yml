@@ -1,9 +1,4 @@
 
-- name: 00 - Bootstrap del sistema
-  import_playbook: playbooks/00_bootstrap.yml
-
-- name: 01 - NAT Gateway
-  import_playbook: playbooks/00_natgateway.yml
 
 - name: 02 - Router 10_20
   import_playbook: playbooks/01_router_10_20.yml

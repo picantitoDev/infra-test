@@ -13,10 +13,47 @@
     state: directory
     mode: '0755'
 
+# Create provisioning directories
+- name: Crear directorios de provisioning para Grafana
+  ansible.builtin.file:
+    path: "{{ grafana_dir }}/provisioning/datasources"
+    state: directory
+    mode: '0755'
+
+- name: Crear directorios de dashboards para Grafana
+  ansible.builtin.file:
+    path: "{{ grafana_dir }}/provisioning/dashboards"
+    state: directory
+    mode: '0755'
+
+- name: Crear directorio de dashboards
+  ansible.builtin.file:
+    path: "{{ grafana_dir }}/dashboards"
+    state: directory
+    mode: '0755'
+
 - name: Crear archivo de configuración de Loki
   ansible.builtin.template:
     src: loki-config.yaml.j2
     dest: "{{ grafana_dir }}/loki-config.yaml"
+    mode: '0644'
+
+- name: Crear archivo de configuración de datasources
+  ansible.builtin.template:
+    src: datasources-grafana.yml.j2
+    dest: "{{ grafana_dir }}/provisioning/datasources/grafana.yml"
+    mode: '0644'
+
+- name: Crear archivo de configuración de dashboards
+  ansible.builtin.template:
+    src: provider.yaml.j2
+    dest: "{{ grafana_dir }}/provisioning/dashboards/provider.yaml"
+    mode: '0644'
+
+- name: Crear dashboard de NGINX
+  ansible.builtin.template:
+    src: test-dashboard.json.j2
+    dest: "{{ grafana_dir }}/dashboards/test-dashboard.json"
     mode: '0644'
 
 - name: Crear archivo docker-compose.yml para Grafana y Loki

@@ -13,6 +13,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password }}
     volumes:
       - grafana_data:/var/lib/grafana
+      - {{ grafana_dir }}/provisioning:/etc/grafana/provisioning
+      - {{ grafana_dir }}/dashboards:/var/lib/grafana/dashboards   # <-- MISSING
     depends_on:
       - loki
 
