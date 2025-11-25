@@ -1,16 +1,36 @@
 table inet filter {
     chain input {
         type filter hook input priority filter; policy drop;
+
+        # Allow loopback
         iifname "lo" accept
+
+        # Allow established connections
         ct state established,related accept
+
+        # Allow SSH from your laptop ONLY
+        iifname "{{ external_interface }}" ip saddr 192.168.0.250 tcp dport 22 accept
     }
+
     chain forward {
         type filter hook forward priority filter; policy drop;
+
+        # Internal VLAN -> Internet
         iifname "{{ internal_interface }}" oifname "{{ external_interface }}" ct state established,related,new accept
+
+        # Internet -> Internal VLAN (only response)
         iifname "{{ external_interface }}" oifname "{{ internal_interface }}" ct state established,related accept
+
+        # Laptop (192.168.0.250) -> VLANs (for SSH, Ansible, Terraform)
+        iifname "{{ external_interface }}" ip saddr 192.168.0.250 oifname "{{ internal_interface }}" accept
+
+        # VLANs -> Laptop (for Harbor access!!)
+        iifname "{{ internal_interface }}" ip daddr 192.168.0.250 accept
     }
+
     chain output {
         type filter hook output priority filter; policy drop;
+
         oifname "lo" accept
         ct state established,related,new accept
     }
@@ -19,7 +39,9 @@ table inet filter {
 table ip nat {
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
+
         {% for subnet in internal_subnets %}
+        # Only NAT traffic going to the internet
         ip saddr {{ subnet }} oifname "{{ external_interface }}" masquerade
         {% endfor %}
     }

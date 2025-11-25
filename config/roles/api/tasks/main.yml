@@ -2,17 +2,24 @@
 # ----------------------------
 # 1️⃣ Login y Pull de imagen
 # ----------------------------
-- name: Autenticarse en Docker Hub
+- name: Agregar Harbor al /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "192.168.0.250 local-harbor.3031.net"
+    state: present
+
+- name: Autenticarse en Harbor
   ansible.builtin.shell: |
-    echo "{{ docker_pat }}" | docker login -u {{ docker_user }} --password-stdin
+    echo "{{ docker_pat }}" | docker login {{ harbor_registry }} -u {{ docker_user }} --password-stdin
   args:
     executable: /bin/bash
 
-- name: Descargar imagen personalizada de la App
+- name: Descargar imagen desde Harbor
   community.docker.docker_image:
     name: "{{ app_image }}"
     source: pull
-
+    force_tag: true
+    
 # ----------------------------
 # 2️⃣ Crear directorio para el App y configurar Docker Compose
 # ----------------------------

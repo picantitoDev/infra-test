@@ -1,8 +1,8 @@
 ---
-docker_user: "picantito"
-docker_pat: "{{ lookup('env', 'DOCKER_TOKEN') }}"
-
-app_image: "picantito/infraestructure-as-code:app-1.0.0"
+docker_user: "admin"
+docker_pat: "{{ lookup('env', 'HARBOR_ADMIN_PASSWORD') }}"
+harbor_registry: "harbor.local"
+app_image: "harbor.local/picantito/infraestructure-as-code:app-1.0.0"
 app_container_name: "myapp"
 worker_container_name: "myapp-worker"
 

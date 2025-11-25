@@ -65,8 +65,24 @@
       - docker-compose-plugin
     state: present
 
+- name: Configurar Docker para permitir insecure registries
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+    content: |
+      {
+        "insecure-registries": [
+          "harbor.local"
+        ]
+      }
+
 - name: Asegurar que Docker esté iniciado y habilitado
   ansible.builtin.systemd:
     name: docker
     state: started
     enabled: yes
+    
+- name: Reiniciar Docker
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted

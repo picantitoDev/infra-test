@@ -4,10 +4,10 @@
 # Vars: Configuración del contenedor Redis
 # ==============================================================
 
-docker_user: "picantito"
-docker_pat: "{{ lookup('env', 'DOCKER_TOKEN') }}"
-
-image_name: "picantito/infraestructure-as-code:redis-1.0.0"
+docker_user: "admin"
+docker_pat: "{{ lookup('env', 'HARBOR_ADMIN_PASSWORD') }}"
+harbor_registry: "harbor.local"
+image_name: "harbor.local/picantito/infraestructure-as-code:redis-1.0.0"
 container_name: "myredis"
 
 redis_password: "infra"
