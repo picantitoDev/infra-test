@@ -8,8 +8,11 @@ table inet filter {
         # Allow established connections
         ct state established,related accept
 
-        # Allow SSH from your laptop ONLY
-        iifname "{{ external_interface }}" ip saddr 192.168.0.250 tcp dport 22 accept
+        # Allow SSH ONLY from laptop + jump host
+        iifname "{{ external_interface }}" tcp dport 22 ip saddr {
+            192.168.0.150,
+            192.168.0.222
+        } accept
     }
 
     chain forward {
@@ -21,11 +24,17 @@ table inet filter {
         # Internet -> Internal VLAN (only response)
         iifname "{{ external_interface }}" oifname "{{ internal_interface }}" ct state established,related accept
 
-        # Laptop (192.168.0.250) -> VLANs (for SSH, Ansible, Terraform)
-        iifname "{{ external_interface }}" ip saddr 192.168.0.250 oifname "{{ internal_interface }}" accept
+        # Laptop + Jump Host -> VLANs (SSH, Ansible, Terraform)
+        iifname "{{ external_interface }}" ip saddr {
+            192.168.0.150,
+            192.168.0.222
+        } oifname "{{ internal_interface }}" accept
 
-        # VLANs -> Laptop (for Harbor access!!)
-        iifname "{{ internal_interface }}" ip daddr 192.168.0.250 accept
+        # VLANs -> Laptop (Harbor access)
+        iifname "{{ internal_interface }}" ip daddr {
+            192.168.0.150,
+            192.168.0.222
+        } accept
     }
 
     chain output {
