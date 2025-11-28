@@ -10,7 +10,7 @@ table inet filter {
 
         # Allow SSH ONLY from laptop + jump host
         iifname "{{ external_interface }}" tcp dport 22 ip saddr {
-            192.168.0.150,
+            192.168.0.250,
             192.168.0.222
         } accept
     }
@@ -26,13 +26,13 @@ table inet filter {
 
         # Laptop + Jump Host -> VLANs (SSH, Ansible, Terraform)
         iifname "{{ external_interface }}" ip saddr {
-            192.168.0.150,
+            192.168.0.250,
             192.168.0.222
         } oifname "{{ internal_interface }}" accept
 
         # VLANs -> Laptop (Harbor access)
         iifname "{{ internal_interface }}" ip daddr {
-            192.168.0.150,
+            192.168.0.250,
             192.168.0.222
         } accept
     }
