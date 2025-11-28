@@ -10,7 +10,7 @@
 - name: Agregar Harbor al /etc/hosts
   ansible.builtin.lineinfile:
     path: /etc/hosts
-    line: "192.168.0.250 local-harbor.3031.net"
+    line: "192.168.0.250 harbor.local"
     state: present
 
 - name: Autenticarse en Harbor
