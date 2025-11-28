@@ -2,17 +2,19 @@ table inet filter {
     chain input {
         type filter hook input priority filter; policy drop;
 
-        # Allow loopback
+        # Loopback
         iifname "lo" accept
 
-        # Allow established connections
+        # Established connections
         ct state established,related accept
 
-        # Allow SSH ONLY from laptop + jump host
-        iifname "{{ external_interface }}" tcp dport 22 ip saddr {
-            192.168.0.250,
-            192.168.0.222
-        } accept
+        # SSH from LAN (administration)
+        iifname "{{ external_interface }}" tcp dport 22 ip saddr 192.168.0.0/24 accept
+
+        # SSH from VLANs (ProxyJump hops)
+        tcp dport 22 ip saddr 10.10.0.0/24 accept
+        tcp dport 22 ip saddr 10.20.0.0/24 accept
+        tcp dport 22 ip saddr 10.30.0.0/24 accept
     }
 
     chain forward {
