@@ -10,7 +10,8 @@ worker_container_name: "myapp-worker"
 database_url: "postgresql://piero:piero@10.30.0.1:5432/sgi"
 redis_url: "redis://:infra@10.30.0.2:6379"
 rabbitmq_url: "amqp://sgi_user:sgi_pass@10.20.0.2:5672"
-
+email_user: "stockcloud.soporte@gmail.com"
+email_pass: "ktte cwnu eojo eaxt"
 node_env: "production"
 session_secret: "infra"
 

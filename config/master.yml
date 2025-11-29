@@ -1,3 +1,26 @@
-- name: 05 - Base de Datos PostgreSQL
+- name: 00 - Bootstrap del sistema
+  import_playbook: playbooks/00_bootstrap.yml
+
+- name: 01 - NAT Gateway
+  import_playbook: playbooks/00_natgateway.yml
+
+- name: 02 - Router 10_20
+  import_playbook: playbooks/01_router_10_20.yml
+
+- name: 03 - Router 20_30
+  import_playbook: playbooks/02_router_20_30.yml
+
+- name: 04 - Base de Datos PostgreSQL
   import_playbook: playbooks/03_database.yml
 
+- name: 05 - Redis
+  import_playbook: playbooks/04_redis.yml
+
+- name: 06 - RabbitMQ
+  import_playbook: playbooks/05_rabbitmq.yml
+
+- name: 07 - API (App + Worker)
+  import_playbook: playbooks/06_api.yml
+
+- name: 08 - Reverse Proxy (NGINX)
+  import_playbook: playbooks/07_reverse_proxy.yml

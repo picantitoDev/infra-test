@@ -21,5 +21,7 @@ services:
     environment:
       RABBITMQ_URL: "{{ rabbitmq_url }}"
       NODE_ENV: "{{ node_env }}"
+      EMAIL_USER: "{{ email_user }}"
+      EMAIL_PASS: "{{ email_pass }}"
     network_mode: host
     restart: unless-stopped
