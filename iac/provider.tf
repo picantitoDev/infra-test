@@ -20,3 +20,13 @@ provider "proxmox" {
   password  = var.root_password
   insecure  = true
 }
+
+terraform {
+  backend "remote"{
+    hostname = "app.terraform.io"
+    organization = "infraestructure-as-code"
+    workspaces {
+      name = "iac"
+    }
+  }
+}
